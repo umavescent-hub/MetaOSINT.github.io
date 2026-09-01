@@ -98,7 +98,10 @@ export function rank(
 
   const seen = new Set<string>();
   const deduped = results.filter((r) => {
-    const key = r.url.replace(/[#?].*$/, '').replace(/\/$/, '').toLowerCase();
+    const key = r.url
+      .replace(/[#?].*$/, '')
+      .replace(/\/$/, '')
+      .toLowerCase();
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

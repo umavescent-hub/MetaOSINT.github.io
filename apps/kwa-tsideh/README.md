@@ -10,7 +10,7 @@ as a single feed. No source can blank the screen, stall the app, or crash it.
 
 ```bash
 cd apps/kwa-tsideh
-npm install
+npm ci
 npx expo start
 ```
 
@@ -72,6 +72,38 @@ Rules the adapter must respect:
 - **Never catch your own timeout.** `ctx.signal` is aborted by the registry;
   let it throw. The fanout records it as a per-source outcome.
 - **Never mutate global state.** The adapter is a pure `query -> results`.
+
+## Behavior under failure
+
+| Situation | What the user sees |
+| --- | --- |
+| One source is slow | It is dropped at its own timeout; everything else renders inside the 2.5s budget |
+| One source is down | A dimmed chip reading `down`; the feed is unaffected |
+| A source fails 3 times running | It rests for 5 minutes and stops eating the budget; a banner says so, pull-to-refresh wakes it |
+| Airplane mode, warm cache | Last saved results with a "No connection" banner |
+| Airplane mode, cold cache | A no-results screen with a way back, never a crash |
+| A render bug | An error boundary with the message and a "Try again", never a white screen |
+| SQLite fails to open | The app runs memory-only; search still works |
+
+Offline is inferred from the failure types themselves: when every source that was
+actually attempted fails with a network error, the device is offline. No extra
+dependency and no permission prompt to determine it.
+
+## Keyed sources and the proxy
+
+The six defaults need no key. If you add a source that does:
+
+1. Set `requiresProxy: true` on the adapter. Until a proxy is configured it is
+   skipped visibly (`needs key` in the status rail) rather than failing.
+2. Add it to the allowlist in `supabase/functions/search-proxy/index.ts`, which
+   refuses unknown source ids and any host that does not match the one
+   registered for that source, so it cannot become an open relay.
+3. `supabase secrets set YOUR_API_KEY=...` and
+   `supabase functions deploy search-proxy --no-verify-jwt`.
+4. Set `EXPO_PUBLIC_PROXY_URL` to the function URL.
+
+The adapter still writes its normal upstream URL. The rewrite to the proxy
+happens in `src/core/http.ts`. No key is ever present in the client bundle.
 
 ## Architecture
 

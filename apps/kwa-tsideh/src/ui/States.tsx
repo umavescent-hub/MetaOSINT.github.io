@@ -71,7 +71,13 @@ export function Spinner(): React.ReactElement {
   );
 }
 
-export function Banner({ text, tone }: { readonly text: string; readonly tone: 'warn' | 'info' }): React.ReactElement {
+export function Banner({
+  text,
+  tone,
+}: {
+  readonly text: string;
+  readonly tone: 'warn' | 'info';
+}): React.ReactElement {
   const p = usePalette();
   const color = tone === 'warn' ? p.danger : p.textMuted;
   return (

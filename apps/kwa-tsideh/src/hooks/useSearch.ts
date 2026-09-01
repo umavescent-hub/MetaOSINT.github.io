@@ -1,10 +1,12 @@
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useCallback, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import Constants from 'expo-constants';
 import { fanout } from '../core/fanout';
 import { allSources } from '../core/registry';
 import { rank } from '../core/rank';
-import type { FanoutReport, SearchResult } from '../core/types';
+import type { SearchResult, SourceOutcome } from '../core/types';
 import { readCache, writeCache } from '../db/cache';
+import { wakeAll } from '../db/health';
 import { recordSearch } from '../db/library';
 import { useSourcePrefs } from '../state/sources';
 
@@ -14,57 +16,117 @@ const proxyUrl = (): string | null => {
   return fromEnv || fromExtra || null;
 };
 
-export interface SearchState extends FanoutReport {
-  /** True when every live source failed and we are serving the last good copy. */
+interface LiveResult {
+  readonly results: readonly SearchResult[];
+  readonly outcomes: readonly SourceOutcome[];
+  readonly ms: number;
+  readonly offline: boolean;
   readonly servedFromCache: boolean;
 }
 
-const EMPTY: SearchState = {
-  query: '',
+export interface SearchView extends LiveResult {
+  /** Nothing to show yet and work is in flight. Drives the skeleton. */
+  readonly isLoading: boolean;
+  readonly isFetching: boolean;
+  readonly isError: boolean;
+  readonly error: Error | null;
+  readonly refetch: () => void;
+}
+
+const EMPTY: LiveResult = {
   results: [],
   outcomes: [],
   ms: 0,
+  offline: false,
   servedFromCache: false,
 };
 
-export function useSearch(query: string): UseQueryResult<SearchState, Error> {
+export function useSearch(query: string): SearchView {
   const enabled = useSourcePrefs((s) => s.enabled);
   const weights = useSourcePrefs((s) => s.weights);
   const trimmed = query.trim();
+  const forceRef = useRef(false);
 
-  return useQuery<SearchState, Error>({
+  // Cache probe. Resolves off a local table in a millisecond or two, so a
+  // repeated query paints before the network has finished dialling.
+  const cached = useQuery<readonly SearchResult[], Error>({
+    queryKey: ['cache', trimmed],
+    enabled: trimmed.length > 0,
+    staleTime: 60_000,
+    retry: false,
+    queryFn: async () => rank(await readCache(trimmed), trimmed, allSources(), weights),
+  });
+
+  const live = useQuery<LiveResult, Error>({
     queryKey: ['search', trimmed, enabled, weights],
     enabled: trimmed.length > 0,
-    // Matches the cache TTL: a repeated query inside the window is instant.
     staleTime: 15 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     retry: false,
-    placeholderData: (prev) => prev ?? EMPTY,
-    queryFn: async (): Promise<SearchState> => {
-      const report = await fanout(trimmed, { enabled, weights, proxyUrl: proxyUrl() });
+    queryFn: async (): Promise<LiveResult> => {
+      const force = forceRef.current;
+      forceRef.current = false;
+      if (force) await wakeAll();
+
+      const report = await fanout(trimmed, { enabled, weights, proxyUrl: proxyUrl(), force });
 
       await Promise.all(
         report.outcomes.map((o) =>
-          o.status === 'ok' ? writeCache(trimmed, o.sourceId, o.results) : Promise.resolve(),
+          o.status === 'ok' && o.results.length > 0
+            ? writeCache(trimmed, o.sourceId, o.results)
+            : Promise.resolve(),
         ),
       );
 
-      const liveSources = report.outcomes.filter((o) => o.status !== 'skipped');
-      const anyLive = report.outcomes.some((o) => o.status === 'ok' && o.results.length > 0);
+      const gotSomething = report.results.length > 0;
+      const attempted = report.outcomes.some((o) => o.status !== 'skipped');
 
-      // Every live source failed -- fall back to the last good copy rather than
-      // showing a blank screen. This is the airplane-mode path.
-      if (!anyLive && liveSources.length > 0) {
-        const cached = await readCache(trimmed);
-        if (cached.length > 0) {
-          const ranked: readonly SearchResult[] = rank(cached, trimmed, allSources(), weights);
+      // Nothing live came back but we tried: serve the last good copy rather
+      // than a blank screen. This is the airplane-mode path.
+      if (!gotSomething && attempted) {
+        const fallback = await readCache(trimmed);
+        if (fallback.length > 0) {
+          const ranked = rank(fallback, trimmed, allSources(), weights);
           await recordSearch(trimmed, ranked.length);
-          return { ...report, results: ranked, servedFromCache: true };
+          return {
+            results: ranked,
+            outcomes: report.outcomes,
+            ms: report.ms,
+            offline: report.offline,
+            servedFromCache: true,
+          };
         }
       }
 
       await recordSearch(trimmed, report.results.length);
-      return { ...report, servedFromCache: false };
+      return {
+        results: report.results,
+        outcomes: report.outcomes,
+        ms: report.ms,
+        offline: report.offline,
+        servedFromCache: false,
+      };
     },
   });
+
+  const refetch = useCallback(() => {
+    forceRef.current = true;
+    void live.refetch();
+  }, [live]);
+
+  const base = live.data ?? EMPTY;
+  const showCached = base.results.length === 0 && (cached.data?.length ?? 0) > 0;
+
+  return {
+    results: showCached ? (cached.data ?? []) : base.results,
+    outcomes: base.outcomes,
+    ms: base.ms,
+    offline: base.offline,
+    servedFromCache: base.servedFromCache || (showCached && live.isFetching),
+    isLoading: live.isPending && !showCached && trimmed.length > 0,
+    isFetching: live.isFetching,
+    isError: live.isError,
+    error: live.error,
+    refetch,
+  };
 }

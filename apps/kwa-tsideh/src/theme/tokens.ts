@@ -5,10 +5,21 @@ import { useColorScheme } from 'react-native';
  * Earth-anchored: charcoal ground, corn-pollen gold, terracotta, turquoise.
  */
 export type Palette = {
-  readonly [K in
-    | 'bg' | 'surface' | 'surfaceRaised' | 'border'
-    | 'text' | 'textMuted' | 'textFaint'
-    | 'accent' | 'accentInk' | 'danger' | 'ok' | 'skeleton']: string;
+  readonly [
+    K in
+      | 'bg'
+      | 'surface'
+      | 'surfaceRaised'
+      | 'border'
+      | 'text'
+      | 'textMuted'
+      | 'textFaint'
+      | 'accent'
+      | 'accentInk'
+      | 'danger'
+      | 'ok'
+      | 'skeleton'
+  ]: string;
 };
 
 const dark: Palette = {

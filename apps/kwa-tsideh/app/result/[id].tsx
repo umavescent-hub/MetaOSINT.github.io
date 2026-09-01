@@ -107,7 +107,10 @@ export default function Detail(): React.ReactElement {
 
         <View style={{ gap: space.md, marginTop: space.md }}>
           <Action label="Open" primary onPress={() => void openExternal()} />
-          <Action label={saved ? 'Saved to library' : 'Save to library'} onPress={() => void onToggleFavorite()} />
+          <Action
+            label={saved ? 'Saved to library' : 'Save to library'}
+            onPress={() => void onToggleFavorite()}
+          />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -136,7 +139,13 @@ function Action({
         borderRadius: radius.pill,
         borderWidth: primary ? 0 : 1,
         borderColor: p.border,
-        backgroundColor: primary ? (pressed ? p.textMuted : p.accent) : pressed ? p.surfaceRaised : 'transparent',
+        backgroundColor: primary
+          ? pressed
+            ? p.textMuted
+            : p.accent
+          : pressed
+            ? p.surfaceRaised
+            : 'transparent',
       })}
     >
       <T variant="label" color={primary ? p.accentInk : p.text}>

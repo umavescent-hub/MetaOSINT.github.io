@@ -23,15 +23,12 @@ export default function SearchEntry(): React.ReactElement {
     void recentSearches(8).then(setHistory);
   }, []);
 
-  const submit = useCallback(
-    (q: string) => {
-      const trimmed = q.trim();
-      if (!trimmed) return;
-      void Haptics.selectionAsync();
-      router.push({ pathname: '/results', params: { q: trimmed } });
-    },
-    [],
-  );
+  const submit = useCallback((q: string) => {
+    const trimmed = q.trim();
+    if (!trimmed) return;
+    void Haptics.selectionAsync();
+    router.push({ pathname: '/results', params: { q: trimmed } });
+  }, []);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: p.bg }}>
@@ -103,7 +100,13 @@ export default function SearchEntry(): React.ReactElement {
   );
 }
 
-function NavButton({ label, onPress }: { readonly label: string; readonly onPress: () => void }): React.ReactElement {
+function NavButton({
+  label,
+  onPress,
+}: {
+  readonly label: string;
+  readonly onPress: () => void;
+}): React.ReactElement {
   const p = usePalette();
   return (
     <Pressable

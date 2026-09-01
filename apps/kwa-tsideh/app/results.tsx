@@ -29,55 +29,72 @@ export default function Results(): React.ReactElement {
     return () => clearTimeout(t);
   }, [input]);
 
-  const { data, isFetching, isError, error, refetch } = useSearch(committed);
+  const { results, outcomes, ms, offline, servedFromCache, isLoading, isFetching, isError, error, refetch } =
+    useSearch(committed);
 
   useEffect(() => {
-    if (data?.results) remember(data.results);
-  }, [data?.results, remember]);
+    remember(results);
+  }, [results, remember]);
 
   const open = useCallback((result: SearchResult) => {
     router.push({ pathname: '/result/[id]', params: { id: result.id } });
   }, []);
 
-  const results = data?.results ?? [];
-  const outcomes = data?.outcomes ?? [];
   const failed = outcomes.filter((o) => o.status === 'error' || o.status === 'timeout');
+  const resting = outcomes.filter((o) => o.status === 'skipped' && o.reason === 'resting');
 
   const header = useMemo(
     () => (
       <View style={{ gap: space.sm, paddingBottom: space.md }}>
         <SearchField value={input} onChangeText={setInput} onSubmit={() => setCommitted(input.trim())} />
         <StatusRail outcomes={outcomes} onPressSource={() => router.push('/settings/sources')} />
-        {data?.servedFromCache ? (
-          <Banner tone="warn" text="Offline — showing your last saved results." />
+        {offline ? (
+          <Banner tone="warn" text="No connection — showing your last saved results." />
+        ) : servedFromCache ? (
+          <Banner tone="warn" text="Live sources are quiet — showing your last saved results." />
         ) : failed.length > 0 ? (
           <Banner
             tone="info"
             text={`${failed.length} source${failed.length === 1 ? '' : 's'} unavailable. Showing everything else.`}
           />
+        ) : resting.length > 0 ? (
+          <Banner
+            tone="info"
+            text={`${resting.length} source${resting.length === 1 ? '' : 's'} resting after repeated failures. Pull down to wake them.`}
+          />
         ) : null}
         {results.length > 0 ? (
           <T variant="caption" color={p.textFaint}>
-            {results.length} results · {data?.ms ?? 0}ms
+            {results.length} results · {ms}ms
           </T>
         ) : null}
       </View>
     ),
-    [input, outcomes, data?.servedFromCache, data?.ms, failed.length, results.length, p.textFaint],
+    [
+      input,
+      outcomes,
+      offline,
+      servedFromCache,
+      ms,
+      failed.length,
+      resting.length,
+      results.length,
+      p.textFaint,
+    ],
   );
 
   const body = (): React.ReactElement | null => {
     if (committed.length === 0) {
       return <Message title="Type to search" body="Your query fans out to every enabled source at once." />;
     }
-    if (isFetching && results.length === 0) return <Skeleton />;
+    if (isLoading) return <Skeleton />;
     if (isError && results.length === 0) {
       return (
         <Message
           title="Search failed"
           body={error?.message ?? 'Something went wrong reaching the sources.'}
           actionLabel="Try again"
-          onAction={() => void refetch()}
+          onAction={refetch}
         />
       );
     }
@@ -109,7 +126,11 @@ export default function Results(): React.ReactElement {
         initialNumToRender={8}
         windowSize={7}
         refreshControl={
-          <RefreshControl refreshing={isFetching && results.length > 0} onRefresh={() => void refetch()} tintColor={p.accent} />
+          <RefreshControl
+            refreshing={isFetching && results.length > 0}
+            onRefresh={refetch}
+            tintColor={p.accent}
+          />
         }
       />
     </SafeAreaView>

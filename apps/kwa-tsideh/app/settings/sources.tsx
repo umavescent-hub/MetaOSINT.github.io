@@ -1,7 +1,10 @@
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
 import { allSources } from '../../src/core/registry';
 import { clearCache } from '../../src/db/cache';
+import { loadHealth, wakeAll, type Health } from '../../src/db/health';
 import { isEnabled, useSourcePrefs } from '../../src/state/sources';
 import { Message } from '../../src/ui/States';
 import { T } from '../../src/ui/Text';
@@ -15,6 +18,14 @@ export default function Sources(): React.ReactElement {
   const setWeight = useSourcePrefs((s) => s.setWeight);
   const reset = useSourcePrefs((s) => s.reset);
   const sources = allSources();
+  const [health, setHealth] = useState<ReadonlyMap<string, Health>>(new Map());
+
+  const refreshHealth = useCallback((): void => {
+    void loadHealth().then(setHealth);
+  }, []);
+
+  useEffect(refreshHealth, [refreshHealth]);
+  useFocusEffect(refreshHealth);
 
   if (sources.length === 0) {
     return (
@@ -34,6 +45,8 @@ export default function Sources(): React.ReactElement {
         {sources.map((s) => {
           const on = isEnabled(enabled, s.id);
           const weight = weights[s.id] ?? s.weight;
+          const h = health.get(String(s.id));
+          const resting = h?.resting_until != null && h.resting_until > Date.now();
           return (
             <View
               key={s.id}
@@ -52,8 +65,10 @@ export default function Sources(): React.ReactElement {
                   <T variant="label" color={p.text}>
                     {s.name}
                   </T>
-                  <T variant="caption" color={p.textFaint}>
-                    {s.kind} · {s.timeoutMs}ms budget{s.requiresProxy ? ' · needs proxy' : ' · no key'}
+                  <T variant="caption" color={resting ? p.danger : p.textFaint}>
+                    {resting
+                      ? `Resting — ${h?.last_error ?? 'repeated failures'}`
+                      : `${s.kind} · ${s.timeoutMs}ms budget${s.requiresProxy ? ' · needs proxy' : ' · no key'}`}
                   </T>
                 </View>
                 <Switch
@@ -100,8 +115,22 @@ export default function Sources(): React.ReactElement {
 
         <Pressable
           onPress={() => {
+            void wakeAll().then(refreshHealth);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Wake resting sources"
+          style={{ minHeight: TOUCH_MIN, justifyContent: 'center', paddingHorizontal: space.lg }}
+        >
+          <T variant="label" color={p.text}>
+            Wake resting sources
+          </T>
+        </Pressable>
+
+        <Pressable
+          onPress={() => {
             reset();
             void clearCache();
+            void wakeAll().then(refreshHealth);
           }}
           accessibilityRole="button"
           accessibilityLabel="Reset sources and clear cache"

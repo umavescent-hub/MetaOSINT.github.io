@@ -32,7 +32,8 @@ function discover(): SourceAdapter[] {
     const mod = ctx<{ default?: unknown }>(key);
     const candidate = mod.default;
     if (isAdapter(candidate)) found.push(candidate);
-    else if (__DEV__) console.warn(`[registry] ${key} does not default-export a valid SourceAdapter; skipped.`);
+    else if (__DEV__)
+      console.warn(`[registry] ${key} does not default-export a valid SourceAdapter; skipped.`);
   }
   return found.sort((a, b) => a.name.localeCompare(b.name));
 }

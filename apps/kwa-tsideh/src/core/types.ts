@@ -57,15 +57,37 @@ export interface SourceAdapter {
   search(query: string, ctx: SearchContext): Promise<readonly SearchResult[]>;
 }
 
+/**
+ * Why a source failed. `network` is the offline signal: when every live source
+ * fails this way, the device -- not the source -- is the problem.
+ */
+export type FailureKind = 'network' | 'http' | 'parse' | 'unknown';
+
+export type SkipReason = 'disabled' | 'no-proxy' | 'resting';
+
 export type SourceOutcome =
-  | { readonly status: 'ok'; readonly sourceId: SourceId; readonly results: readonly SearchResult[]; readonly ms: number; readonly fromCache: boolean }
-  | { readonly status: 'error'; readonly sourceId: SourceId; readonly error: string; readonly ms: number }
+  | {
+      readonly status: 'ok';
+      readonly sourceId: SourceId;
+      readonly results: readonly SearchResult[];
+      readonly ms: number;
+      readonly fromCache: boolean;
+    }
+  | {
+      readonly status: 'error';
+      readonly sourceId: SourceId;
+      readonly error: string;
+      readonly kind: FailureKind;
+      readonly ms: number;
+    }
   | { readonly status: 'timeout'; readonly sourceId: SourceId; readonly ms: number }
-  | { readonly status: 'skipped'; readonly sourceId: SourceId; readonly reason: 'disabled' | 'no-proxy' };
+  | { readonly status: 'skipped'; readonly sourceId: SourceId; readonly reason: SkipReason };
 
 export interface FanoutReport {
   readonly query: string;
   readonly results: readonly SearchResult[];
   readonly outcomes: readonly SourceOutcome[];
   readonly ms: number;
+  /** Every live source failed to reach the network. Treat the device as offline. */
+  readonly offline: boolean;
 }

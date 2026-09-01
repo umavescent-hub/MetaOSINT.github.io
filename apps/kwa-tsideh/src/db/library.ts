@@ -98,9 +98,7 @@ export async function findResultById(resultId: string): Promise<SearchResult | n
       resultId,
     );
     if (row) return JSON.parse(row.payload_json) as SearchResult;
-    const cached = await getDb().getAllAsync<{ payload_json: string }>(
-      'SELECT payload_json FROM cache;',
-    );
+    const cached = await getDb().getAllAsync<{ payload_json: string }>('SELECT payload_json FROM cache;');
     for (const c of cached) {
       const list = JSON.parse(c.payload_json) as SearchResult[];
       const hit = list.find((r) => r.id === resultId);

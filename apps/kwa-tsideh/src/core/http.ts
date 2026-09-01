@@ -1,12 +1,18 @@
 /** Typed transport errors so the UI can say something true about a failure. */
 export class HttpError extends Error {
-  constructor(readonly status: number, readonly url: string) {
+  constructor(
+    readonly status: number,
+    readonly url: string,
+  ) {
     super(`HTTP ${status}`);
     this.name = 'HttpError';
   }
 }
 export class NetworkError extends Error {
-  constructor(readonly url: string, cause?: unknown) {
+  constructor(
+    readonly url: string,
+    cause?: unknown,
+  ) {
     super('Network unreachable');
     this.name = 'NetworkError';
     this.cause = cause;
@@ -50,19 +56,37 @@ async function request(url: string, opts: RequestOptions): Promise<Response> {
   throw lastErr instanceof Error ? lastErr : new NetworkError(url);
 }
 
-export function makeFetchers(signal: AbortSignal): {
+/**
+ * Keyed sources never see a key. The adapter builds its normal upstream URL and
+ * this rewrites it to the proxy, which holds the credential server-side.
+ */
+export interface ProxyConfig {
+  readonly baseUrl: string;
+  readonly sourceId: string;
+}
+
+function route(url: string, proxy: ProxyConfig | null): string {
+  if (!proxy) return url;
+  const base = proxy.baseUrl.replace(/\/$/, '');
+  return `${base}/${encodeURIComponent(proxy.sourceId)}?url=${encodeURIComponent(url)}`;
+}
+
+export function makeFetchers(
+  signal: AbortSignal,
+  proxy: ProxyConfig | null = null,
+): {
   fetchJson: <T>(url: string, init?: RequestInit) => Promise<T>;
   fetchText: (url: string, init?: RequestInit) => Promise<string>;
 } {
   const headersOf = (init?: RequestInit): Record<string, string> =>
     (init?.headers as Record<string, string> | undefined) ?? {};
   return {
-    fetchJson: async <T,>(url: string, init?: RequestInit): Promise<T> => {
-      const res = await request(url, { signal, headers: headersOf(init) });
+    fetchJson: async <T>(url: string, init?: RequestInit): Promise<T> => {
+      const res = await request(route(url, proxy), { signal, headers: headersOf(init) });
       return (await res.json()) as T;
     },
     fetchText: async (url: string, init?: RequestInit): Promise<string> => {
-      const res = await request(url, { signal, headers: headersOf(init) });
+      const res = await request(route(url, proxy), { signal, headers: headersOf(init) });
       return await res.text();
     },
   };

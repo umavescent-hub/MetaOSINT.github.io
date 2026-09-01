@@ -15,10 +15,14 @@ export async function waitForSlot(id: SourceId, minIntervalMs: number, signal: A
     if (wait > 0) {
       await new Promise<void>((resolve, reject) => {
         const t = setTimeout(resolve, wait);
-        signal.addEventListener('abort', () => {
-          clearTimeout(t);
-          reject(new DOMException('Aborted', 'AbortError'));
-        }, { once: true });
+        signal.addEventListener(
+          'abort',
+          () => {
+            clearTimeout(t);
+            reject(new DOMException('Aborted', 'AbortError'));
+          },
+          { once: true },
+        );
       });
     }
   }

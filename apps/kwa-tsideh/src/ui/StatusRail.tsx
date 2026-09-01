@@ -14,7 +14,14 @@ function detailOf(outcome: SourceOutcome | undefined): { detail: string; active:
     case 'error':
       return { detail: 'down', active: false };
     case 'skipped':
-      return { detail: outcome.reason === 'disabled' ? 'off' : 'needs key', active: false };
+      switch (outcome.reason) {
+        case 'disabled':
+          return { detail: 'off', active: false };
+        case 'no-proxy':
+          return { detail: 'needs key', active: false };
+        case 'resting':
+          return { detail: 'resting', active: false };
+      }
   }
 }
 

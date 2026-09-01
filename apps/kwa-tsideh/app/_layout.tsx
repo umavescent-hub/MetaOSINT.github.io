@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { initDb } from '../src/db/schema';
+import { ErrorBoundary } from '../src/ui/ErrorBoundary';
 import { useSourcePrefs } from '../src/state/sources';
 import { usePalette } from '../src/theme/tokens';
 
@@ -33,25 +34,27 @@ export default function RootLayout(): React.ReactElement {
   if (!booted) return <View style={{ flex: 1, backgroundColor: p.bg }} />;
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <SafeAreaProvider>
-        <StatusBar style="auto" />
-        <Stack
-          screenOptions={{
-            headerStyle: { backgroundColor: p.bg },
-            headerTintColor: p.text,
-            headerTitleStyle: { fontWeight: '700' },
-            contentStyle: { backgroundColor: p.bg },
-            headerShadowVisible: false,
-          }}
-        >
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="results" options={{ title: 'Results' }} />
-          <Stack.Screen name="result/[id]" options={{ title: '' }} />
-          <Stack.Screen name="library" options={{ title: 'Library' }} />
-          <Stack.Screen name="settings/sources" options={{ title: 'Sources' }} />
-        </Stack>
-      </SafeAreaProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <SafeAreaProvider>
+          <StatusBar style="auto" />
+          <Stack
+            screenOptions={{
+              headerStyle: { backgroundColor: p.bg },
+              headerTintColor: p.text,
+              headerTitleStyle: { fontWeight: '700' },
+              contentStyle: { backgroundColor: p.bg },
+              headerShadowVisible: false,
+            }}
+          >
+            <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="results" options={{ title: 'Results' }} />
+            <Stack.Screen name="result/[id]" options={{ title: '' }} />
+            <Stack.Screen name="library" options={{ title: 'Library' }} />
+            <Stack.Screen name="settings/sources" options={{ title: 'Sources' }} />
+          </Stack>
+        </SafeAreaProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

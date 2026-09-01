@@ -49,7 +49,8 @@ const MIGRATIONS: readonly string[] = [
     source_id TEXT PRIMARY KEY,
     last_ok_at INTEGER,
     last_error TEXT,
-    consecutive_failures INTEGER NOT NULL DEFAULT 0
+    consecutive_failures INTEGER NOT NULL DEFAULT 0,
+    resting_until INTEGER
   );
   `,
 ];

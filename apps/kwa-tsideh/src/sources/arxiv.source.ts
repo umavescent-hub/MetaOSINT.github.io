@@ -7,7 +7,10 @@ const ID = sourceId('arxiv');
  * XML parser into the bundle for one source with a fixed, stable schema.
  */
 function entries(xml: string): string[] {
-  return xml.split('<entry>').slice(1).map((chunk) => chunk.split('</entry>')[0] ?? '');
+  return xml
+    .split('<entry>')
+    .slice(1)
+    .map((chunk) => chunk.split('</entry>')[0] ?? '');
 }
 
 function tag(chunk: string, name: string): string {
@@ -49,18 +52,20 @@ const adapter: SourceAdapter = {
       const title = tag(chunk, 'title');
       if (!link || !title) return [];
       const published = tag(chunk, 'published');
-      return [{
-        id: `${ID}:${link}`,
-        sourceId: ID,
-        kind: 'paper' as const,
-        title,
-        snippet: tag(chunk, 'summary').slice(0, 280) || 'arXiv preprint.',
-        url: link,
-        author: authors(chunk),
-        publishedAt: published ? Date.parse(published) || undefined : undefined,
-        rankHint: i,
-        raw: { link, published },
-      }];
+      return [
+        {
+          id: `${ID}:${link}`,
+          sourceId: ID,
+          kind: 'paper' as const,
+          title,
+          snippet: tag(chunk, 'summary').slice(0, 280) || 'arXiv preprint.',
+          url: link,
+          author: authors(chunk),
+          publishedAt: published ? Date.parse(published) || undefined : undefined,
+          rankHint: i,
+          raw: { link, published },
+        },
+      ];
     });
   },
 };
