@@ -73,6 +73,8 @@ Rules the adapter must respect:
   let it throw. The fanout records it as a per-source outcome.
 - **Never mutate global state.** The adapter is a pure `query -> results`.
 
+Shipping to the App Store and Play Store: **[docs/SHIPPING.md](docs/SHIPPING.md)**.
+
 ## Behavior under failure
 
 | Situation | What the user sees |
@@ -88,6 +90,12 @@ Rules the adapter must respect:
 Offline is inferred from the failure types themselves: when every source that was
 actually attempted fails with a network error, the device is offline. No extra
 dependency and no permission prompt to determine it.
+
+## The icon
+
+The mark — six sources converging on one center — is generated from code, not a
+design file. `npm run icons` regenerates every size from
+`tools/make-icons.mjs`, so they can never drift apart.
 
 ## Keyed sources and the proxy
 

@@ -8,26 +8,49 @@
     "scheme": "kwatsideh",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0B0B0C"
-    },
-    "assetBundlePatterns": ["**/*"],
+    "primaryColor": "#E8B14C",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.popehospitality.kwatsideh"
+      "bundleIdentifier": "com.popehospitality.kwatsideh",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "package": "com.popehospitality.kwatsideh",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0B0B0C"
-      },
-      "edgeToEdgeEnabled": true,
-      "package": "com.popehospitality.kwatsideh"
+      }
     },
-    "web": { "favicon": "./assets/favicon.png", "bundler": "metro" },
-    "plugins": ["expo-router", "expo-sqlite"],
-    "experiments": { "typedRoutes": true }
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#FBF9F4",
+          "dark": {
+            "image": "./assets/splash-icon.png",
+            "backgroundColor": "#0B0B0C"
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
   }
 }
